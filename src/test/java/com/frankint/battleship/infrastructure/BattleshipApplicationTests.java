@@ -1,4 +1,4 @@
-package com.frankint.battleship;
+package com.frankint.battleship.infrastructure;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
