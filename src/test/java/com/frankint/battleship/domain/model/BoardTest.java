@@ -11,44 +11,34 @@ class BoardTest {
     void testPlaceShip_OutOfBounds_RightEdge() {
         Board board = new Board(10, 10);
         Coordinate c = new Coordinate(9, 9);
-        Coordinate c0 = new Coordinate(10, 9); // out of bounds
-        Ship ship = new Ship("Destroyer", 2, List.of(c, c0));
 
-        assertFalse(board.placeShip(ship)); // Out of bounds
+        assertThrows(IllegalArgumentException.class, () -> board.placeShip("Destroyer", 2, c, Orientation.HORIZONTAL)); // Out of bounds
     }
 
     @Test
     void testPlaceShip_OutOfBounds_BottomEdge() {
         Board board = new Board(10, 10);
         Coordinate c = new Coordinate(9, 9);
-        Coordinate c1 = new Coordinate(9, 10); // out of bounds
-        Ship ship0 = new Ship("Destroyer", 2, List.of(c, c1));
 
-        assertFalse(board.placeShip(ship0)); // Out of bounds
+        assertThrows(IllegalArgumentException.class, () -> board.placeShip("Destroyer", 2, c, Orientation.VERTICAL)); // Out of bounds
     }
 
     @Test
     void testPlaceShip_SuccessfulPlacement() {
         Board board = new Board(10, 10);
-        Coordinate c = new Coordinate(9, 9);
-        Coordinate c2 = new Coordinate(8, 9); // valid second coordinate
-        Ship ship1 = new Ship("Destroyer", 2, List.of(c, c2));
+        Coordinate c = new Coordinate(8, 9); // valid second coordinate
 
-        assertTrue(board.placeShip(ship1)); // Valid placement
+        assertDoesNotThrow(() -> board.placeShip("Destroyer", 2, c, Orientation.HORIZONTAL)); // Valid placement
     }
 
     @Test
     void testPlaceShip_Overlap() {
         Board board = new Board(10, 10);
-        Coordinate c = new Coordinate(9, 9);
-        Coordinate c2 = new Coordinate(8, 9);
-        Coordinate c3 = new Coordinate(9, 8);
+        Coordinate c1 = new Coordinate(8, 9);
+        Coordinate c2 = new Coordinate(9, 8);
 
-        Ship placed = new Ship("Destroyer", 2, List.of(c, c2));
-        Ship overlapping = new Ship("Destroyer", 2, List.of(c, c3));
-
-        board.placeShip(placed);
-        assertFalse(board.placeShip(overlapping)); // Overlap with existing ship
+        board.placeShip("Destroyer", 2, c1, Orientation.HORIZONTAL);
+        assertThrows(IllegalArgumentException.class, () -> board.placeShip("Destroyer1", 2, c2, Orientation.VERTICAL)); // Overlap with existing ship
     }
 
     @Test
@@ -85,9 +75,7 @@ class BoardTest {
     void testFireShot_Hit_NotSunk() {
         Board board = new Board(10, 10);
         Coordinate c1 = new Coordinate(0, 0);
-        Coordinate c2 = new Coordinate(0, 1);
-        Ship ship = new Ship("Destroyer", 2, List.of(c1, c2));
-        board.placeShip(ship);
+        board.placeShip("Destroyer", 2, c1, Orientation.VERTICAL);
 
         ShotResult result = board.fireShot(c1);
 
@@ -98,8 +86,7 @@ class BoardTest {
     void testFireShot_Sunk() {
         Board board = new Board(10, 10);
         Coordinate c = new Coordinate(0, 0);
-        Ship ship = new Ship("Destroyer", 1, List.of(c));
-        board.placeShip(ship);
+        board.placeShip("Destroyer", 1, c, Orientation.HORIZONTAL);
 
         ShotResult result = board.fireShot(c);
 
@@ -110,8 +97,7 @@ class BoardTest {
     void testFireShot_RepeatedShotSameCoordinateHit() {
         Board board = new Board(10, 10);
         Coordinate c = new Coordinate(0, 0);
-        Ship ship = new Ship("Destroyer", 1, List.of(c));
-        board.placeShip(ship);
+        board.placeShip("Destroyer", 1, c, Orientation.HORIZONTAL);
 
         board.fireShot(c); // first shot sinks ship
         ShotResult result = board.fireShot(c); // second should NOT sink again
@@ -124,8 +110,7 @@ class BoardTest {
         Board board = new Board(10, 10);
         Coordinate c = new Coordinate(0, 0);
         Coordinate c0 = new Coordinate(1, 0);
-        Ship ship = new Ship("Destroyer", 1, List.of(c0));
-        board.placeShip(ship);
+        board.placeShip("Destroyer", 1, c0, Orientation.HORIZONTAL);
 
         board.fireShot(c); // first shot sinks ship
         ShotResult result = board.fireShot(c); // second should NOT sink again
@@ -161,8 +146,7 @@ class BoardTest {
     void testFireShot_AtSunkShip() {
         Board board = new Board(10, 10);
         Coordinate c = new Coordinate(0, 0);
-        Ship ship = new Ship("Destroyer", 1, List.of(c));
-        board.placeShip(ship);
+        board.placeShip("ship", 1, c, Orientation.HORIZONTAL);
 
         board.fireShot(c);      // sinks the ship
         ShotResult result = board.fireShot(c); // second shot
@@ -174,11 +158,8 @@ class BoardTest {
     void testFireShot_MultipleShipsCorrectHit() {
         Board board = new Board(10, 10);
 
-        Ship ship1 = new Ship("Submarine", 1, List.of(new Coordinate(1, 1)));
-        Ship ship2 = new Ship("Destroyer", 2, List.of(new Coordinate(3, 3), new Coordinate(3, 4)));
-
-        board.placeShip(ship1);
-        board.placeShip(ship2);
+        board.placeShip("Submarine", 1, new Coordinate(1, 1), Orientation.HORIZONTAL);
+        board.placeShip("Destroyer", 2, new Coordinate(3, 3), Orientation.VERTICAL);
 
         ShotResult result1 = board.fireShot(new Coordinate(3, 3)); // hit destroyer
         ShotResult result2 = board.fireShot(new Coordinate(1, 1)); // hit submarine
