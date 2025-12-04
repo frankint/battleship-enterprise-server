@@ -55,6 +55,11 @@ public class Board {
         missedShots.add(coordinate);
         return ShotResult.MISS;
     }
+
+    public boolean allShipsSunk() {
+        return ships.stream().allMatch(Ship::isSunk);
+    }
+
     private boolean canPlaceShip(Ship ship) {
         for (Coordinate c : ship.getCoordinates()) {
             if (c.x() >= width || c.y() >= height) {
