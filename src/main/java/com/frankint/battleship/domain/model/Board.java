@@ -23,11 +23,28 @@ public class Board {
         this.occupied = new HashSet<>();
     }
 
-    public boolean placeShip(Ship ship) {
-        if(!canPlaceShip(ship)) return false;
-        ships.add(ship);
-        occupied.addAll(ship.getCoordinates());
-        return true;
+    /**
+     * Attempts to place a ship.
+     * Throws IllegalArgumentException if placement is invalid.
+     */
+    public void placeShip(String shipId, int length, Coordinate start, Orientation orientation) {
+        List<Coordinate> coordinates = calculateCoordinates(start, length, orientation);
+
+        canPlaceShip(coordinates);
+
+        Ship newShip = new Ship(shipId, length, coordinates);
+        ships.add(newShip);
+        occupied.addAll(coordinates);
+    }
+
+    private List<Coordinate> calculateCoordinates(Coordinate start, int length, Orientation orientation) {
+        List<Coordinate> coords = new ArrayList<>();
+        for (int i = 0; i < length; i++) {
+            int x = start.x() + (orientation == Orientation.HORIZONTAL ? i : 0);
+            int y = start.y() + (orientation == Orientation.VERTICAL ? i : 0);
+            coords.add(new Coordinate(x, y));
+        }
+        return coords;
     }
 
     public ShotResult fireShot(Coordinate coordinate) {
@@ -60,17 +77,16 @@ public class Board {
         return ships.stream().allMatch(Ship::isSunk);
     }
 
-    private boolean canPlaceShip(Ship ship) {
-        for (Coordinate c : ship.getCoordinates()) {
+    private void canPlaceShip(List<Coordinate> coordinates) {
+        for (Coordinate c : coordinates) {
             if (c.x() >= width || c.y() >= height) {
-                return false; // Out of bounds
+                throw new IllegalArgumentException("Ship extends off the board at " + c);
             }
         }
-        for (Coordinate c : ship.getCoordinates()) {
+        for (Coordinate c : coordinates) {
             if (occupied.contains(c)) {
-                return false; // Already occupied
+                throw new IllegalArgumentException("Ship overlaps with an existing ship at " + c);
             }
         }
-        return true;
     }
 }
