@@ -7,11 +7,11 @@ import java.util.List;
 
 @Getter
 public class Ship {
-    private final String id;
-    private final int size;
+    private String id;
+    private int size;
     private int health;
     private boolean sunk;
-    private final List<Coordinate> coordinates;
+    private List<Coordinate> coordinates;
 
     public Ship(String id, int size, List<Coordinate> coordinates) {
         if (id == null || id.isEmpty()) throw new IllegalArgumentException("id is null or empty");
@@ -23,6 +23,10 @@ public class Ship {
         this.health = size;
         this.coordinates = new ArrayList<>(coordinates);
         this.sunk = false;
+    }
+
+    private Ship() {
+        this.coordinates = new ArrayList<>();
     }
 
     public boolean isHit(Coordinate shot) {
