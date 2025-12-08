@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Battleship Dev Console</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Battleship Enterprise Server</h1>
+
+    <div id="connection-panel">
+        <h3>1. Setup Game</h3>
+        <label>Player ID: <input type="text" id="playerId" value="player1"></label>
+        <button onclick="createGame()">Create Game</button>
+        <br><br>
+        <label>Game ID: <input type="text" id="gameIdInput"></label>
+        <button onclick="joinGame()">Join Game</button>
+        <hr>
+        <h3>2. Prepare</h3>
+        <button onclick="placeDefaultShips()">Auto-Place Ships (Dev Mode)</button>
+    </div>
+
+    <div id="status-bar">
+        State: <span id="gameState">DISCONNECTED</span> |
+        Turn: <span id="currentTurn">-</span>
+    </div>
+    <div id="error-msg" class="error"></div>
+
+    <div class="game-area">
+        <div>
+            <h4>My Board</h4>
+            <div id="my-board" class="board"></div>
+        </div>
+        <div>
+            <h4>Opponent Board</h4>
+            <div id="opponent-board" class="board"></div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
