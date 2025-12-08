@@ -6,17 +6,26 @@ import java.util.*;
 
 @Getter
 public class Board {
-    private final int width;
-    private final int height;
-    private final List<Ship> ships;
-    private final List<Coordinate> missedShots;
-    private final List<Coordinate> hitShots;
-    private final Set<Coordinate> occupied;
+    private int width;
+    private int height;
+    private List<Ship> ships;
+    private List<Coordinate> missedShots;
+    private List<Coordinate> hitShots;
+    private Set<Coordinate> occupied;
 
     public Board(int width, int height) {
         if (width <= 0 || height <= 0) throw new IllegalArgumentException("Board width and height must be positive");
         this.width = width;
         this.height = height;
+        this.ships = new ArrayList<>();
+        this.missedShots = new ArrayList<>();
+        this.hitShots = new ArrayList<>();
+        this.occupied = new HashSet<>();
+    }
+
+    private Board() {
+        this.width = 10;
+        this.height = 10;
         this.ships = new ArrayList<>();
         this.missedShots = new ArrayList<>();
         this.hitShots = new ArrayList<>();

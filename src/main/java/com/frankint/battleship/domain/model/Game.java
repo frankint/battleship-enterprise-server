@@ -21,6 +21,25 @@ public class Game {
         this.state = GameState.WAITING_FOR_PLAYER;
     }
 
+    public static Game reconstitute(String id, Player p1, Player p2, String turn, GameState state, String winner) {
+        Game game = new Game(p1);
+        // We use reflection or direct assignment to force the state
+        game.player2 = p2;
+        game.currentTurnPlayerId = turn;
+        game.state = state;
+        game.winnerId = winner;
+
+        // Overwrite the random ID generated in constructor with the real one from DB
+        try {
+            var idField = Game.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(game, id);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to reconstitute game", e);
+        }
+        return game;
+    }
+
     public void join(Player player2) {
         if (state != GameState.WAITING_FOR_PLAYER) {
             throw new IllegalStateException("Game is already full or finished");
