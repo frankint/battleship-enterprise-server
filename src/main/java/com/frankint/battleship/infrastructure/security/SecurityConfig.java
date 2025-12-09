@@ -16,7 +16,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for simple REST API testing
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/ws/**").permitAll() // Allow Login/Register & WebSocket handshake
-                        .requestMatchers("/index.html", "/app.js", "/styles.css").permitAll() // Allow Frontend
+                        .requestMatchers("/", "/index.html", "/app.js", "/styles.css").permitAll() // Allow Frontend
                         .anyRequest().authenticated() // Block everything else
                 )
                 .httpBasic(basic -> {}); // Use HTTP Basic Auth (Simple header: Authorization: Basic Base64(user:pass))

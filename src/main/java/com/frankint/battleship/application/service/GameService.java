@@ -33,6 +33,11 @@ public class GameService {
             return game; // Re-joining their own game
         }
 
+        // Check if Player 2 is re-joining
+        if (game.getPlayer2() != null && game.getPlayer2().getId().equals(playerId)) {
+            return game;
+        }
+
         Board emptyBoard = new Board(10, 10);
         Player player2 = new Player(playerId, emptyBoard);
         game.join(player2);
@@ -58,6 +63,7 @@ public class GameService {
         return gameRepository.save(game);
     }
 
+    @Transactional
     public List<Game> getPlayerHistory(String playerId) {
         return gameRepository.findGamesByPlayer(playerId);
     }
