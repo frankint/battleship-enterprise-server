@@ -60,7 +60,7 @@ public class GameController {
         return ResponseEntity.ok(gameMapper.toDTO(game, user.getUsername()));
     }
 
-    // 4. NEW: Game History
+    // 4. Game History
     @GetMapping
     public ResponseEntity<List<GameDTO>> getMyGames(@AuthenticationPrincipal UserDetails user) {
         List<Game> games = gameService.getPlayerHistory(user.getUsername());
@@ -71,5 +71,14 @@ public class GameController {
                 .toList();
 
         return ResponseEntity.ok(dtos);
+    }
+
+    @PostMapping("/{gameId}/hide")
+    public ResponseEntity<Void> hideGame(
+            @PathVariable String gameId,
+            @AuthenticationPrincipal UserDetails user) {
+
+        gameService.hideGame(gameId, user.getUsername());
+        return ResponseEntity.ok().build();
     }
 }

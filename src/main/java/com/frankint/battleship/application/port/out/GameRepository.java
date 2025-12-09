@@ -10,4 +10,5 @@ public interface GameRepository {
     Optional<Game> findById(String gameId);
     void delete(String gameId);
     List<Game> findGamesByPlayer(String playerId);
+    void hideGame(String gameId, String playerId);
 }

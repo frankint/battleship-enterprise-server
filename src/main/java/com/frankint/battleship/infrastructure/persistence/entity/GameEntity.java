@@ -22,4 +22,10 @@ public class GameEntity {
 
     @OneToOne(cascade = CascadeType.ALL)
     private PlayerEntity player2;
+
+    @Column(nullable = false)
+    private boolean p1Visible = true;
+
+    @Column(nullable = false)
+    private boolean p2Visible = true;
 }
