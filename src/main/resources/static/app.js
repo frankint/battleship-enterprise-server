@@ -1,5 +1,8 @@
-const API_URL = 'http://localhost:8080/api';
-const AUTH_URL = 'http://localhost:8080/auth';
+const HOST = window.location.origin;
+
+const API_URL = `${HOST}/api`;
+const AUTH_URL = `${HOST}/auth`;
+const WS_URL = `${HOST}/ws`;
 
 let stompClient = null;
 let currentUser = null;
@@ -192,7 +195,7 @@ function leaveGame() {
 }
 
 function connectWebSocket() {
-    const socket = new SockJS('http://localhost:8080/ws');
+    const socket = new SockJS(WS_URL);
     stompClient = Stomp.over(socket);
     stompClient.debug = null;
 
