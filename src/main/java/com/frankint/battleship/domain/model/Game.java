@@ -72,19 +72,23 @@ public class Game {
     public ShotResult fire(String playerId, Coordinate target) {
         validateMove(playerId);
 
-        // Determine opponent
         Player opponent = playerId.equals(player1.getId()) ? player2 : player1;
 
-        // Fire at opponent's board
+        // 1. Fire the shot logic (Pure calculation)
         ShotResult result = opponent.getBoard().fireShot(target);
 
-        // Check Win Condition
+        // 2. Block duplicates immediately
+        if (result == ShotResult.DUPLICATE) {
+            throw new IllegalArgumentException("You have already fired at coordinate " + target);
+        }
+
+        // 3. Check Win Condition
         if (result == ShotResult.SUNK && opponent.hasLost()) {
             state = GameState.FINISHED;
             winnerId = playerId;
         }
 
-        // Switch Turn (Simple Rule: Turn always switches)
+        // 4. Switch Turn (Only reached if no exception was thrown)
         switchTurn();
 
         return result;
