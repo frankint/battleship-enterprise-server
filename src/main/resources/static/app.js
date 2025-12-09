@@ -315,17 +315,41 @@ function renderBoard(elementId, playerData, isOpponent) {
             const cell = document.createElement('div');
             cell.className = 'cell';
 
+            let alreadyShot = false; // Flag to track status
+
             if (playerData) {
-                // Ships
+                // Ships (Only mine)
                 if (!isOpponent && playerData.ships.some(s => s.coordinates.some(c => c.x===x && c.y===y))) {
                     cell.classList.add('ship');
                 }
-                // Hits/Misses (Check null safety)
-                if (playerData.hits && playerData.hits.some(c => c.x===x && c.y===y)) cell.classList.add('hit');
-                if (playerData.misses && playerData.misses.some(c => c.x===x && c.y===y)) cell.classList.add('miss');
+                // Hits
+                if (playerData.hits && playerData.hits.some(c => c.x===x && c.y===y)) {
+                    cell.classList.add('hit');
+                    alreadyShot = true;
+                }
+                // Misses
+                if (playerData.misses && playerData.misses.some(c => c.x===x && c.y===y)) {
+                    cell.classList.add('miss');
+                    alreadyShot = true;
+                }
             }
 
-            cell.onclick = () => handleGridClick(isOpponent, x, y);
+            // CLICK HANDLERS
+            if (isOpponent) {
+                if (alreadyShot) {
+                    // Disable click and change cursor
+                    cell.style.cursor = 'not-allowed';
+                    cell.title = "Already fired here";
+                } else {
+                    // Enable click
+                    cell.onclick = () => handleGridClick(isOpponent, x, y);
+                    cell.style.cursor = 'crosshair';
+                }
+            } else {
+                // My board (Placement logic)
+                cell.onclick = () => handleGridClick(isOpponent, x, y);
+            }
+
             container.appendChild(cell);
         }
     }
