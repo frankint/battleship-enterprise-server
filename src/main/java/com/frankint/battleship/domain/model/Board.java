@@ -98,4 +98,13 @@ public class Board {
             }
         }
     }
+
+    public boolean hasPlacedShip(ShipType type) {
+        return ships.stream()
+                .anyMatch(s -> s.getId().equalsIgnoreCase(type.getId()));
+    }
+
+    public int getShipCount() {
+        return ships.size();
+    }
 }

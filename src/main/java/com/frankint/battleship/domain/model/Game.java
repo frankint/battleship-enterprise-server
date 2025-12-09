@@ -12,6 +12,7 @@ public class Game {
     private String currentTurnPlayerId;
     private GameState state;
     private String winnerId;
+    public static final int FLEET_SIZE = 5;
 
     // Constructor for a new game
     public Game(Player player1) {
@@ -45,7 +46,27 @@ public class Game {
             throw new IllegalStateException("Game is already full or finished");
         }
         this.player2 = player2;
-        this.state = GameState.ACTIVE;
+        this.state = GameState.SETUP;
+    }
+
+    public void placeShip(String playerId, ShipType type, Coordinate start, Orientation orientation) {
+        // 1. Validation: Can only place in SETUP or WAITING (P1 waiting for P2)
+        if (state != GameState.SETUP && state != GameState.WAITING_FOR_PLAYER) {
+            throw new IllegalStateException("Cannot place ships in state: " + state);
+        }
+
+        Player player = getPlayerById(playerId);
+
+        // 2. Prevent duplicate ships
+        if (player.getBoard().hasPlacedShip(type)) {
+            throw new IllegalArgumentException("You have already placed a " + type.getId());
+        }
+
+        // 3. Place the ship (Size is determined by ShipType, not the user!)
+        player.getBoard().placeShip(type.getId(), type.getSize(), start, orientation);
+
+        // 4. Check if both players are ready
+        checkAndStartGame();
     }
 
     public ShotResult fire(String playerId, Coordinate target) {
@@ -84,5 +105,22 @@ public class Game {
                     ? player2.getId()
                     : player1.getId();
         }
+    }
+
+    private void checkAndStartGame() {
+        if (state == GameState.WAITING_FOR_PLAYER) return; // Cannot start without P2
+
+        boolean p1Ready = player1.getBoard().getShipCount() == FLEET_SIZE;
+        boolean p2Ready = player2 != null && player2.getBoard().getShipCount() == FLEET_SIZE;
+
+        if (p1Ready && p2Ready) {
+            this.state = GameState.ACTIVE;
+        }
+    }
+
+    private Player getPlayerById(String playerId) {
+        if (player1.getId().equals(playerId)) return player1;
+        if (player2 != null && player2.getId().equals(playerId)) return player2;
+        throw new IllegalArgumentException("Player not found in this game");
     }
 }
