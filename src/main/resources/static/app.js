@@ -298,7 +298,7 @@ function handleGridClick(isOpponent, x, y) {
             if (r.ok) {
                 renderGame(await r.json());
                 selectedShipType = null;
-                // Auto-select next ship? Optional
+                clearPreviews();
             } else {
                 showError("Invalid Placement (Overlap or Bounds)");
             }
@@ -315,39 +315,40 @@ function renderBoard(elementId, playerData, isOpponent) {
             const cell = document.createElement('div');
             cell.className = 'cell';
 
-            let alreadyShot = false; // Flag to track status
-
+            let alreadyShot = false;
             if (playerData) {
-                // Ships (Only mine)
                 if (!isOpponent && playerData.ships.some(s => s.coordinates.some(c => c.x===x && c.y===y))) {
                     cell.classList.add('ship');
                 }
-                // Hits
                 if (playerData.hits && playerData.hits.some(c => c.x===x && c.y===y)) {
                     cell.classList.add('hit');
                     alreadyShot = true;
                 }
-                // Misses
                 if (playerData.misses && playerData.misses.some(c => c.x===x && c.y===y)) {
                     cell.classList.add('miss');
                     alreadyShot = true;
                 }
             }
 
-            // CLICK HANDLERS
             if (isOpponent) {
+                // ... opponent logic (keep Issue 19 logic) ...
                 if (alreadyShot) {
-                    // Disable click and change cursor
                     cell.style.cursor = 'not-allowed';
                     cell.title = "Already fired here";
                 } else {
-                    // Enable click
                     cell.onclick = () => handleGridClick(isOpponent, x, y);
                     cell.style.cursor = 'crosshair';
                 }
             } else {
-                // My board (Placement logic)
+
+                // 1. Placement Click
                 cell.onclick = () => handleGridClick(isOpponent, x, y);
+
+                // 2. Hover Effects (Only if we have a ship selected)
+                if (selectedShipType) {
+                    cell.onmouseenter = () => handleShipHover(x, y, playerData);
+                    cell.onmouseleave = () => clearPreviews();
+                }
             }
 
             container.appendChild(cell);
@@ -365,4 +366,66 @@ function showError(msg) {
     el.innerText = msg;
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function handleShipHover(x, y, playerData) {
+    if (!selectedShipType) return; // Do nothing if no ship selected from yard
+
+    // 1. Find ship size
+    const shipInfo = ALL_SHIPS.find(s => s.id === selectedShipType);
+    if (!shipInfo) return;
+
+    const size = shipInfo.size;
+    const orientation = document.querySelector('input[name="orient"]:checked').value;
+
+    // 2. Calculate target coordinates
+    const coords = [];
+    let isValid = true;
+
+    for (let i = 0; i < size; i++) {
+        const targetX = x + (orientation === "HORIZONTAL" ? i : 0);
+        const targetY = y + (orientation === "VERTICAL" ? i : 0);
+
+        // Check Bounds (0-9)
+        if (targetX > 9 || targetY > 9) {
+            isValid = false;
+            // We still add it to coords to show the red overflow,
+            // but only if it's within the visible grid
+            if (targetX <= 9 && targetY <= 9) {
+                coords.push({ x: targetX, y: targetY });
+            }
+        } else {
+            coords.push({ x: targetX, y: targetY });
+
+            // Check Overlap with existing ships
+            // (Note: playerData.ships might be null if board is empty)
+            if (playerData.ships && playerData.ships.some(s =>
+                s.coordinates.some(c => c.x === targetX && c.y === targetY)
+            )) {
+                isValid = false;
+            }
+        }
+    }
+
+    // 3. Apply CSS Classes
+    coords.forEach(c => {
+        // Find the specific cell div.
+        // We need a reliable way to find the cell.
+        // Let's rely on the DOM order: My Board is the first .board in the DOM
+        const boardDiv = document.getElementById('my-board');
+        const cellIndex = c.y * 10 + c.x;
+        const cell = boardDiv.children[cellIndex];
+
+        if (cell) {
+            cell.classList.add(isValid ? 'preview-valid' : 'preview-invalid');
+        }
+    });
+}
+
+function clearPreviews() {
+    document.querySelectorAll('.preview-valid, .preview-invalid')
+        .forEach(el => {
+            el.classList.remove('preview-valid');
+            el.classList.remove('preview-invalid');
+        });
 }
