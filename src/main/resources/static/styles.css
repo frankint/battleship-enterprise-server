@@ -55,3 +55,14 @@ button.primary { font-weight: bold; font-size: 1.1em; background: #27ae60; }
 /* Input styling fix */
 .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 input { padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #ddd; }
+
+/* Ghost Ship Preview Styles */
+.preview-valid {
+    background-color: rgba(46, 204, 113, 0.7) !important; /* Green */
+    border: 1px dashed white;
+}
+
+.preview-invalid {
+    background-color: rgba(231, 76, 60, 0.7) !important; /* Red */
+    cursor: not-allowed !important;
+}
