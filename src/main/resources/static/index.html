@@ -2,43 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Battleship Dev Console</title>
+    <title>Battleship Enterprise</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 </head>
 <body>
-<div class="container">
-    <h1>Battleship Enterprise Server</h1>
 
-    <div id="connection-panel">
-        <h3>1. Setup Game</h3>
-        <label>Player ID: <input type="text" id="playerId" value="player1"></label>
-        <button onclick="createGame()">Create Game</button>
-        <br><br>
-        <label>Game ID: <input type="text" id="gameIdInput"></label>
-        <button onclick="joinGame()">Join Game</button>
-        <hr>
-        <h3>2. Prepare</h3>
-        <button onclick="placeDefaultShips()">Auto-Place Ships (Dev Mode)</button>
-    </div>
+<div id="auth-screen" class="screen">
+    <div class="card">
+        <h1 id="auth-title">Login</h1>
 
-    <div id="status-bar">
-        State: <span id="gameState">DISCONNECTED</span> |
-        Turn: <span id="currentTurn">-</span>
-    </div>
-    <div id="error-msg" class="error"></div>
-
-    <div class="game-area">
-        <div>
-            <h4>My Board</h4>
-            <div id="my-board" class="board"></div>
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
         </div>
-        <div>
-            <h4>Opponent Board</h4>
+
+        <div class="buttons">
+            <button id="btn-action" class="primary" onclick="handleAuth()">Login</button>
+        </div>
+
+        <p class="toggle-link">
+            <span id="toggle-text">Need an account?</span>
+            <a href="#" onclick="toggleAuthMode()">Click here</a>
+        </p>
+
+        <p id="auth-msg" class="error-text"></p>
+    </div>
+</div>
+
+<div id="lobby-screen" class="screen hidden">
+    <div class="card wide">
+        <div class="header">
+            <h2>Welcome, <span id="display-user"></span></h2>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <div class="lobby-controls">
+            <button class="primary" onclick="createGame()">Create New Game</button>
+            <div class="join-box">
+                <input type="text" id="gameIdInput" placeholder="Enter Game ID">
+                <button onclick="joinGame()">Join</button>
+            </div>
+        </div>
+
+        <h3>Your Recent Games</h3>
+        <ul id="games-list"></ul>
+    </div>
+</div>
+
+<div id="game-screen" class="screen hidden">
+    <div class="game-header">
+        <button onclick="leaveGame()">← Back to Lobby</button>
+        <div>Game ID: <span id="display-game-id"></span></div>
+        <div>State: <span id="game-state">WAITING</span></div>
+    </div>
+
+    <div class="game-container">
+        <div class="board-section">
+            <h3>My Fleet</h3>
+            <div id="my-board" class="board"></div>
+
+            <div id="setup-controls" class="hidden">
+                <h4>Ship Yard</h4>
+                <p>Select ship, then click grid.</p>
+                <div class="orientation-toggle">
+                    <label><input type="radio" name="orient" value="HORIZONTAL" checked> Horizontal</label>
+                    <label><input type="radio" name="orient" value="VERTICAL"> Vertical</label>
+                </div>
+                <div id="ship-yard"></div>
+            </div>
+        </div>
+
+        <div class="board-section">
+            <h3>Enemy Waters <span id="turn-indicator"></span></h3>
             <div id="opponent-board" class="board"></div>
         </div>
     </div>
+
+    <div id="error-msg" class="error-toast hidden"></div>
 </div>
 
 <script src="app.js"></script>

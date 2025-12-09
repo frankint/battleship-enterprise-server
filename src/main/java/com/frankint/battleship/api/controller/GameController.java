@@ -1,7 +1,6 @@
 package com.frankint.battleship.api.controller;
 
 import com.frankint.battleship.api.dto.GameDTO;
-import com.frankint.battleship.api.dto.JoinGameRequest;
 import com.frankint.battleship.api.dto.PlaceShipRequest;
 import com.frankint.battleship.api.mapper.GameMapper;
 import com.frankint.battleship.application.service.GameService;
@@ -9,7 +8,11 @@ import com.frankint.battleship.domain.model.Game;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/games")
@@ -19,41 +22,54 @@ public class GameController {
     private final GameService gameService;
     private final GameMapper gameMapper;
 
+    // 1. Create Game - No body needed, ID comes from Session
     @PostMapping
-    public ResponseEntity<GameDTO> createGame(@RequestBody JoinGameRequest request) {
-        // We reuse JoinGameRequest since it just contains a playerId
-        Game game = gameService.createGame(request.playerId());
+    public ResponseEntity<GameDTO> createGame(@AuthenticationPrincipal UserDetails user) {
+        Game game = gameService.createGame(user.getUsername());
 
-        // Return 201 Created
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(gameMapper.toDTO(game, request.playerId()));
+                .body(gameMapper.toDTO(game, user.getUsername()));
     }
 
+    // 2. Join Game - ID comes from Path, User from Session
     @PostMapping("/{gameId}/join")
     public ResponseEntity<GameDTO> joinGame(
             @PathVariable String gameId,
-            @RequestBody JoinGameRequest request) {
+            @AuthenticationPrincipal UserDetails user) {
 
-        Game game = gameService.joinGame(gameId, request.playerId());
+        Game game = gameService.joinGame(gameId, user.getUsername());
 
-        return ResponseEntity.ok(gameMapper.toDTO(game, request.playerId()));
+        return ResponseEntity.ok(gameMapper.toDTO(game, user.getUsername()));
     }
 
-    // NOTE: This endpoint is strictly for ship placement via REST.
+    // 3. Place Ship - User from Session
     @PostMapping("/{gameId}/place")
     public ResponseEntity<GameDTO> placeShip(
             @PathVariable String gameId,
-            @RequestHeader("X-Player-ID") String playerId,
+            @AuthenticationPrincipal UserDetails user,
             @RequestBody PlaceShipRequest request) {
 
         Game game = gameService.placeShip(
                 gameId,
-                playerId,
+                user.getUsername(),
                 request.shipType(),
                 request.start(),
                 request.orientation()
         );
 
-        return ResponseEntity.ok(gameMapper.toDTO(game, playerId));
+        return ResponseEntity.ok(gameMapper.toDTO(game, user.getUsername()));
+    }
+
+    // 4. NEW: Game History
+    @GetMapping
+    public ResponseEntity<List<GameDTO>> getMyGames(@AuthenticationPrincipal UserDetails user) {
+        List<Game> games = gameService.getPlayerHistory(user.getUsername());
+
+        // Convert all to DTOs
+        List<GameDTO> dtos = games.stream()
+                .map(g -> gameMapper.toDTO(g, user.getUsername()))
+                .toList();
+
+        return ResponseEntity.ok(dtos);
     }
 }

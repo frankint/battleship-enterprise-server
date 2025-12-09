@@ -1,26 +1,57 @@
-body { font-family: sans-serif; padding: 20px; }
-.container { max-width: 900px; margin: 0 auto; }
-.game-area { display: flex; gap: 50px; margin-top: 20px; }
+body { font-family: 'Segoe UI', sans-serif; background: #2c3e50; color: white; margin: 0; }
+.hidden { display: none !important; }
+
+/* Screens */
+.screen { padding: 20px; display: flex; justify-content: center; }
+#login-screen { height: 100vh; align-items: center; }
+
+/* Cards */
+.card { background: #34495e; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+.wide { width: 800px; }
+
+/* Inputs & Buttons */
+input { padding: 10px; border-radius: 4px; border: none; margin-bottom: 10px; width: 200px; }
+button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; background: #3498db; color: white; }
+button:hover { background: #2980b9; }
+button.primary { font-weight: bold; font-size: 1.1em; background: #27ae60; }
+
+/* Game Lists */
+#games-list { list-style: none; padding: 0; }
+#games-list li { background: rgba(0,0,0,0.2); margin: 5px 0; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+/* Boards */
+.game-container { display: flex; gap: 40px; justify-content: center; margin-top: 20px; }
 .board {
-    display: grid;
-    grid-template-columns: repeat(10, 30px);
-    grid-template-rows: repeat(10, 30px);
-    gap: 2px;
-    background: #333;
-    padding: 2px;
+    display: grid; grid-template-columns: repeat(10, 30px); gap: 2px;
+    background: #2c3e50; border: 2px solid #7f8c8d;
 }
-.cell {
-    width: 30px; height: 30px;
-    background: #eee;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; cursor: pointer;
-}
-.cell:hover { background: #ddd; }
+.cell { width: 30px; height: 30px; background: #95a5a6; cursor: crosshair; }
 
 /* Cell States */
-.cell.ship { background: #888; }       /* My Ship */
-.cell.hit { background: #ff4444; }     /* Hit on ship */
-.cell.miss { background: #87ceeb; }    /* Miss (Water) */
-.cell.sunk { background: #333; color: white; }
+.cell.ship { background: #7f8c8d; border: 2px solid #2c3e50; }
+.cell.hit { background: #e74c3c; } /* Red */
+.cell.miss { background: #3498db; } /* Blue */
 
-.error { color: red; font-weight: bold; margin: 10px 0; }
+/* Ship Yard */
+#ship-yard { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.ship-btn { background: #e67e22; text-align: left; opacity: 1; }
+.ship-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #7f8c8d; }
+.ship-btn.selected { border: 2px solid white; box-shadow: 0 0 5px white; }
+
+.error-toast { position: fixed; bottom: 20px; right: 20px; background: #c0392b; padding: 15px; border-radius: 4px; color: white; }
+
+/* Update existing or add new */
+.error-text { color: #e74c3c; min-height: 20px; margin-top: 10px; font-weight: bold; }
+
+.toggle-link { margin-top: 15px; font-size: 0.9em; color: #bdc3c7; }
+.toggle-link a { color: #3498db; text-decoration: none; cursor: pointer; }
+.toggle-link a:hover { text-decoration: underline; }
+
+.hidden { display: none !important; }
+
+/* Ensure the screen takes full height to center the card */
+#auth-screen { height: 100vh; align-items: center; }
+
+/* Input styling fix */
+.input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+input { padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #ddd; }

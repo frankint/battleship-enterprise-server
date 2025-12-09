@@ -4,6 +4,7 @@ import com.frankint.battleship.application.port.out.GameRepository;
 import com.frankint.battleship.domain.model.Game;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,5 +33,18 @@ public class InMemoryGameRepository implements GameRepository {
     @Override
     public void delete(String gameId) {
         store.remove(gameId);
+    }
+
+    @Override
+    public List<Game> findGamesByPlayer(String playerId) {
+        return store.values().stream()
+                .filter(game -> isPlayerInGame(game, playerId))
+                .toList();
+    }
+
+    private boolean isPlayerInGame(Game game, String playerId) {
+        boolean isP1 = game.getPlayer1() != null && game.getPlayer1().getId().equals(playerId);
+        boolean isP2 = game.getPlayer2() != null && game.getPlayer2().getId().equals(playerId);
+        return isP1 || isP2;
     }
 }

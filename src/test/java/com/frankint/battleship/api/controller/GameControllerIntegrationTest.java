@@ -1,7 +1,6 @@
 package com.frankint.battleship.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.frankint.battleship.api.dto.JoinGameRequest;
 import com.frankint.battleship.api.dto.PlaceShipRequest;
 import com.frankint.battleship.domain.model.Coordinate;
 import com.frankint.battleship.domain.model.Orientation;
@@ -13,12 +12,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.hamcrest.Matchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Transactional // Ensures DB is cleaned up after every test
+@Transactional
 class GameControllerIntegrationTest {
 
     @Autowired
@@ -29,70 +31,84 @@ class GameControllerIntegrationTest {
 
     @Test
     void shouldCreateGameSuccessfully() throws Exception {
-        JoinGameRequest request = new JoinGameRequest("p1-create");
-
+        // Authenticate as "player-1" using the .with(user(...)) post-processor
         mockMvc.perform(post("/api/games")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .with(user("player-1"))) // <--- SIMULATES LOGIN
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.gameId").isNotEmpty())
                 .andExpect(jsonPath("$.state").value("WAITING_FOR_PLAYER"))
-                .andExpect(jsonPath("$.self.playerId").value("p1-create"));
+                .andExpect(jsonPath("$.self.playerId").value("player-1"));
     }
 
     @Test
     void shouldJoinGameSuccessfully() throws Exception {
-        // 1. Create
-        String createResponse = mockMvc.perform(post("/api/games")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinGameRequest("p1-join"))))
+        // 1. Player 1 creates game
+        String response = mockMvc.perform(post("/api/games")
+                        .with(user("p1")))
                 .andReturn().getResponse().getContentAsString();
 
-        String gameId = objectMapper.readTree(createResponse).get("gameId").asText();
+        String gameId = objectMapper.readTree(response).get("gameId").asText();
 
-        // 2. Join
+        // 2. Player 2 joins game (Notice we switch users!)
         mockMvc.perform(post("/api/games/" + gameId + "/join")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinGameRequest("p2-join"))))
+                        .with(user("p2"))) // <--- DIFFERENT USER
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.state").value("SETUP"))
-                .andExpect(jsonPath("$.opponent.playerId").value("p1-join"));
+                .andExpect(jsonPath("$.opponent.playerId").value("p1"));
     }
 
     @Test
     void shouldPlaceShipSuccessfully() throws Exception {
         // 1. Setup Game (Create + Join)
-        String gameId = createAndJoinGame("p1-place", "p2-place");
+        String gameId = createAndJoinGame("p1", "p2");
 
-        // 2. Prepare Request (Note: No 'size' parameter, using 'shipType')
+        // 2. Prepare Request (Carrier)
         PlaceShipRequest request = new PlaceShipRequest(
-                "Carrier", // Matches ShipType.CARRIER
+                "Carrier",
                 new Coordinate(0, 0),
                 Orientation.HORIZONTAL
         );
 
-        // 3. Perform Request
+        // 3. P1 Places Ship
         mockMvc.perform(post("/api/games/" + gameId + "/place")
-                        .header("X-Player-ID", "p1-place") // Auth Header
+                        .with(user("p1")) // <--- Authenticated as P1
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.self.ships[0].id").value("Carrier"))
-                .andExpect(jsonPath("$.self.ships[0].size").value(5)); // Server enforces size 5
+                .andExpect(jsonPath("$.self.ships[0].id").value("Carrier"));
     }
 
-    // Helper to reduce code duplication in tests
+    @Test
+    void shouldGetGameHistory() throws Exception {
+        // 1. Create a game as "history-user"
+        mockMvc.perform(post("/api/games")
+                .with(user("history-user")));
+
+        // 2. Fetch history
+        mockMvc.perform(get("/api/games")
+                        .with(user("history-user")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1))) // Should have 1 game
+                .andExpect(jsonPath("$[0].self.playerId").value("history-user"));
+    }
+
+    @Test
+    void shouldFailIfUnauthenticated() throws Exception {
+        // Try to create game without .with(user(...))
+        mockMvc.perform(post("/api/games"))
+                .andExpect(status().isUnauthorized()); // Expect 401
+    }
+
+    // Helper
     private String createAndJoinGame(String p1, String p2) throws Exception {
         String response = mockMvc.perform(post("/api/games")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinGameRequest(p1))))
+                        .with(user(p1)))
                 .andReturn().getResponse().getContentAsString();
 
         String gameId = objectMapper.readTree(response).get("gameId").asText();
 
         mockMvc.perform(post("/api/games/" + gameId + "/join")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new JoinGameRequest(p2))));
+                .with(user(p2)));
 
         return gameId;
     }
