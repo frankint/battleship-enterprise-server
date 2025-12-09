@@ -87,3 +87,6 @@ input { padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #d
 }
 .btn-confirm { background-color: #27ae60; }
 .btn-cancel { background-color: #c0392b; }
+
+button.secondary { background-color: #7f8c8d; margin-left: 10px; }
+button.secondary:hover { background-color: #95a5a6; }
