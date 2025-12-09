@@ -42,7 +42,9 @@ public class GameEntityMapper {
 
     private PlayerEntity toPlayerEntity(Player player) {
         PlayerEntity entity = new PlayerEntity();
-        entity.setId(player.getId());
+        // We store the domain ID (username) in the new userId field
+        entity.setUserId(player.getId());
+
         try {
             entity.setBoardJson(objectMapper.writeValueAsString(player.getBoard()));
         } catch (JsonProcessingException e) {
@@ -54,7 +56,9 @@ public class GameEntityMapper {
     private Player toPlayerDomain(PlayerEntity entity) {
         try {
             Board board = objectMapper.readValue(entity.getBoardJson(), Board.class);
-            return new Player(entity.getId(), board);
+            // When loading back, we use the userId (username) as the Domain ID
+            return new Player(entity.getUserId(), board);
+
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error deserializing board", e);
         }

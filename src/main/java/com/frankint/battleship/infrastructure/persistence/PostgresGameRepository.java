@@ -14,7 +14,7 @@ import java.util.Optional;
 
 // 1. The Internal JPA Interface
 interface JpaGameRepository extends JpaRepository<GameEntity, String> {
-    List<GameEntity> findByPlayer1_IdOrPlayer2_Id(String p1Id, String p2Id);
+    List<GameEntity> findByPlayer1_UserIdOrPlayer2_UserId(String p1Id, String p2Id);
 }
 
 // 2. The Public Adapter (The one GameService uses)
@@ -44,7 +44,7 @@ public class PostgresGameRepository implements GameRepository {
     }
     @Override
     public List<Game> findGamesByPlayer(String playerId) {
-        return jpaRepository.findByPlayer1_IdOrPlayer2_Id(playerId, playerId)
+        return jpaRepository.findByPlayer1_UserIdOrPlayer2_UserId(playerId, playerId)
                 .stream()
                 .map(mapper::toDomain)
                 .toList();
