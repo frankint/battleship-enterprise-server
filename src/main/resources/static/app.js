@@ -16,14 +16,19 @@ let lastKnownState = null;
 // ================= INITIALIZATION =================
 // Run this when the script loads to check for existing session
 document.addEventListener("DOMContentLoaded", () => {
-    const savedUser = localStorage.getItem("battleship_user");
-    const savedPass = localStorage.getItem("battleship_token"); // We store the base64 string
+    // Check LocalStorage (Registered) OR SessionStorage (Guest)
+    let savedUser = localStorage.getItem("battleship_user");
+    let savedPass = localStorage.getItem("battleship_token");
+
+    if (!savedUser) {
+        savedUser = sessionStorage.getItem("battleship_user");
+        savedPass = sessionStorage.getItem("battleship_token");
+    }
 
     if (savedUser && savedPass) {
-        // Auto-login
         currentUser = savedUser;
         authHeader = `Basic ${savedPass}`;
-        // Validate token by fetching history
+        // Validate token
         fetch(`${API_URL}/games`, { headers: { 'Authorization': authHeader } })
             .then(response => {
                 if (response.ok) {
@@ -31,11 +36,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     showScreen('lobby-screen');
                     response.json().then(loadHistory);
                 } else {
-                    // Token invalid/expired
                     logout();
                 }
             })
-            .catch(() => logout()); // Server down
+            .catch(() => logout());
     }
 });
 
@@ -126,9 +130,12 @@ async function handleAuth() {
 function logout() {
     localStorage.removeItem("battleship_user");
     localStorage.removeItem("battleship_token");
+    sessionStorage.removeItem("battleship_user");
+    sessionStorage.removeItem("battleship_token");
+
     currentUser = null;
     authHeader = null;
-    location.reload(); // Refresh to clear state
+    location.reload();
 }
 
 // ================= LOBBY =================
@@ -505,4 +512,39 @@ function confirmPlacement() {
 function cancelPlacement() {
     pendingPlacement = null;
     renderGame(lastKnownState);
+}
+
+async function handleGuestLogin() {
+    const msg = document.getElementById('auth-msg');
+    msg.innerText = "Creating guest account...";
+
+    try {
+        // 1. Get Credentials from Server
+        const response = await fetch(`${AUTH_URL}/guest`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) throw new Error("Failed to create guest.");
+
+        const creds = await response.json();
+
+        // 2. Log in using those credentials
+        const token = btoa(creds.username + ":" + creds.password);
+        const header = `Basic ${token}`;
+
+        currentUser = creds.username;
+        authHeader = header;
+
+        // 3. Save to SESSION Storage (Ephemeral)
+        sessionStorage.setItem("battleship_user", currentUser);
+        sessionStorage.setItem("battleship_token", token);
+
+        document.getElementById('display-user').innerText = currentUser;
+        showScreen('lobby-screen');
+        loadHistory([]); // New guest has no history
+        msg.innerText = "";
+
+    } catch (e) {
+        msg.innerText = e.message;
+    }
 }
