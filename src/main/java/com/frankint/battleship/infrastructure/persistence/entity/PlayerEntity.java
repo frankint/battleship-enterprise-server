@@ -7,10 +7,14 @@ import lombok.Data;
 @Table(name = "players")
 @Data
 public class PlayerEntity {
+
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID) // Generate a random ID for this "Seat"
     private String id;
 
-    @Lob // Large Object
+    private String userId;
+
+    @Lob
     @Column(columnDefinition = "TEXT")
-    private String boardJson; // We store the board as a JSON string
+    private String boardJson;
 }
