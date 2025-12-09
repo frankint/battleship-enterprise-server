@@ -66,11 +66,19 @@
             <div id="setup-controls" class="hidden">
                 <h4>Ship Yard</h4>
                 <p>Select ship, then click grid.</p>
+
                 <div class="orientation-toggle">
                     <label><input type="radio" name="orient" value="HORIZONTAL" checked> Horizontal</label>
                     <label><input type="radio" name="orient" value="VERTICAL"> Vertical</label>
                 </div>
-                <div id="ship-yard"></div>
+
+                <div id="ship-yard">
+                </div>
+
+                <div id="placement-actions" class="hidden">
+                    <button class="btn-confirm" onclick="confirmPlacement()">✔ Confirm</button>
+                    <button class="btn-cancel" onclick="cancelPlacement()">✘ Cancel</button>
+                </div>
             </div>
         </div>
 

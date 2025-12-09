@@ -10,6 +10,8 @@ let authHeader = null;
 let currentGameId = null;
 let selectedShipType = null;
 let isRegisterMode = false;
+let pendingPlacement = null; // Stores { x, y, type, orientation }
+let lastKnownState = null;
 
 // ================= INITIALIZATION =================
 // Run this when the script loads to check for existing session
@@ -217,6 +219,8 @@ const ALL_SHIPS = [
 ];
 
 function renderGame(state) {
+    lastKnownState = state; // Critical: Save state for re-rendering during confirm/cancel
+
     document.getElementById('game-state').innerText = state.state;
 
     // Turn Indicator
@@ -233,10 +237,22 @@ function renderGame(state) {
         turnSpan.innerText = "";
     }
 
+    // Setup Controls Visibility
     const setupControls = document.getElementById('setup-controls');
+    const shipYard = document.getElementById('ship-yard');
+    const actions = document.getElementById('placement-actions');
+
     if (state.state === 'SETUP' || state.state === 'WAITING_FOR_PLAYER') {
         setupControls.classList.remove('hidden');
-        renderShipYard(state.self.ships);
+
+        if (pendingPlacement) {
+            shipYard.classList.add('hidden');     // Hide list
+            actions.classList.remove('hidden');   // Show Confirm/Cancel
+        } else {
+            shipYard.classList.remove('hidden');  // Show list
+            actions.classList.add('hidden');      // Hide Confirm/Cancel
+            renderShipYard(state.self.ships);
+        }
     } else {
         setupControls.classList.add('hidden');
     }
@@ -244,7 +260,6 @@ function renderGame(state) {
     renderBoard('my-board', state.self, false);
     renderBoard('opponent-board', state.opponent, true);
 
-    // Check Win/Loss
     if (state.state === 'FINISHED') {
         if (state.winnerId === currentUser) alert("VICTORY!");
         else alert("DEFEAT!");
@@ -263,10 +278,17 @@ function renderShipYard(placedShips) {
         const isPlaced = placedShips.some(s => s.id === ship.id);
         if (isPlaced) btn.disabled = true;
 
-        btn.onclick = () => {
-            document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('selected'));
+        // Highlight if currently selected
+        if (selectedShipType === ship.id) {
             btn.classList.add('selected');
+        }
+
+        btn.onclick = () => {
             selectedShipType = ship.id;
+
+            // This attaches the 'onmouseenter' events to the grid cells
+            // because selectedShipType is no longer null.
+            renderGame(lastKnownState);
         };
         container.appendChild(btn);
     });
@@ -274,35 +296,34 @@ function renderShipYard(placedShips) {
 
 function handleGridClick(isOpponent, x, y) {
     if (isOpponent) {
+        // ... existing shooting logic ...
         if(!stompClient) return;
         stompClient.send(`/app/game/${currentGameId}/move`,
             { "playerId": currentUser },
             JSON.stringify({ target: { x, y } })
         );
     } else {
+
+        // 1. Ignore click if we already have a pending placement (must resolve first)
+        if (pendingPlacement) return;
+
+        // 2. Ignore if no ship selected
         if (!selectedShipType) return;
+
+        // 3. Store the intent
         const orientation = document.querySelector('input[name="orient"]:checked').value;
 
-        fetch(`${API_URL}/games/${currentGameId}/place`, {
-            method: 'POST',
-            headers: {
-                'Authorization': authHeader,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                shipType: selectedShipType,
-                start: { x, y },
-                orientation: orientation
-            })
-        }).then(async r => {
-            if (r.ok) {
-                renderGame(await r.json());
-                selectedShipType = null;
-                clearPreviews();
-            } else {
-                showError("Invalid Placement (Overlap or Bounds)");
-            }
-        });
+        pendingPlacement = {
+            x: x,
+            y: y,
+            shipType: selectedShipType,
+            orientation: orientation
+        };
+
+        // 4. Trigger re-render to show the "Pending" yellow ship
+        // We pass the current game state back into renderGame to refresh the view
+        // (We need to store the last known state globally to do this cleanly)
+        renderGame(lastKnownState);
     }
 }
 
@@ -316,22 +337,45 @@ function renderBoard(elementId, playerData, isOpponent) {
             cell.className = 'cell';
 
             let alreadyShot = false;
+
+            // --- RENDER STATE (Ships, Hits, Misses) ---
             if (playerData) {
+                // Ships (Only mine)
                 if (!isOpponent && playerData.ships.some(s => s.coordinates.some(c => c.x===x && c.y===y))) {
                     cell.classList.add('ship');
                 }
+                // Hits
                 if (playerData.hits && playerData.hits.some(c => c.x===x && c.y===y)) {
                     cell.classList.add('hit');
                     alreadyShot = true;
                 }
+                // Misses
                 if (playerData.misses && playerData.misses.some(c => c.x===x && c.y===y)) {
                     cell.classList.add('miss');
                     alreadyShot = true;
                 }
             }
 
+            // Only on my board, and only if we are waiting for confirmation
+            if (!isOpponent && pendingPlacement) {
+                const shipInfo = ALL_SHIPS.find(s => s.id === pendingPlacement.shipType);
+                const p = pendingPlacement;
+                let isPendingCell = false;
+
+                // Calculate if this x,y is part of the pending ship
+                for(let i=0; i < shipInfo.size; i++) {
+                    const px = p.x + (p.orientation === "HORIZONTAL" ? i : 0);
+                    const py = p.y + (p.orientation === "VERTICAL" ? i : 0);
+                    if (x === px && y === py) isPendingCell = true;
+                }
+
+                if (isPendingCell) {
+                    cell.classList.add('preview-pending');
+                }
+            }
+
+            // --- INTERACTION LOGIC ---
             if (isOpponent) {
-                // ... opponent logic (keep Issue 19 logic) ...
                 if (alreadyShot) {
                     cell.style.cursor = 'not-allowed';
                     cell.title = "Already fired here";
@@ -340,12 +384,11 @@ function renderBoard(elementId, playerData, isOpponent) {
                     cell.style.cursor = 'crosshair';
                 }
             } else {
-
-                // 1. Placement Click
+                // MY BOARD PLACEMENT
                 cell.onclick = () => handleGridClick(isOpponent, x, y);
 
-                // 2. Hover Effects (Only if we have a ship selected)
-                if (selectedShipType) {
+                // Disable hover if we are stuck in "Pending Confirmation" mode
+                if (selectedShipType && !pendingPlacement) {
                     cell.onmouseenter = () => handleShipHover(x, y, playerData);
                     cell.onmouseleave = () => clearPreviews();
                 }
@@ -428,4 +471,38 @@ function clearPreviews() {
             el.classList.remove('preview-valid');
             el.classList.remove('preview-invalid');
         });
+}
+
+function confirmPlacement() {
+    if (!pendingPlacement) return;
+
+    const { x, y, shipType, orientation } = pendingPlacement;
+
+    fetch(`${API_URL}/games/${currentGameId}/place`, {
+        method: 'POST',
+        headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            shipType: shipType,
+            start: { x, y },
+            orientation: orientation
+        })
+    }).then(async r => {
+        if (r.ok) {
+            const newState = await r.json();
+            pendingPlacement = null; // Clear pending
+            selectedShipType = null; // Clear selection
+            renderGame(newState);
+        } else {
+            showError("Invalid Placement (Overlap or Bounds)");
+            cancelPlacement(); // Reset on error
+        }
+    });
+}
+
+function cancelPlacement() {
+    pendingPlacement = null;
+    renderGame(lastKnownState);
 }
