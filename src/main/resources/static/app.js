@@ -163,19 +163,64 @@ async function joinGame(id) {
 function loadHistory(games) {
     const list = document.getElementById('games-list');
     list.innerHTML = '';
+
     if(games.length === 0) {
         list.innerHTML = '<li>No games played yet.</li>';
         return;
     }
+
     games.forEach(g => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>Vs: ${getOpponentName(g)} <small>(${g.state})</small></span>`;
-        const btn = document.createElement('button');
-        btn.innerText = "Open";
-        btn.onclick = () => joinGame(g.gameId); // Re-join handles "opening" existing games
-        li.appendChild(btn);
+
+        // Game Info
+        const info = document.createElement('span');
+        info.innerHTML = `Vs: <strong>${getOpponentName(g)}</strong> <small>(${g.state})</small>`;
+
+        // Action Container
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '10px';
+
+        // 1. Open Button
+        const btnJoin = document.createElement('button');
+        btnJoin.innerText = "Open";
+        btnJoin.onclick = () => joinGame(g.gameId);
+
+        // 2. Hide Button (NEW)
+        const btnHide = document.createElement('button');
+        btnHide.innerText = "❌";
+        btnHide.title = "Remove from history";
+        btnHide.style.backgroundColor = "#c0392b"; // Red
+        btnHide.onclick = (e) => {
+            e.stopPropagation(); // Prevent triggering other clicks
+            hideGame(g.gameId);
+        };
+
+        actions.appendChild(btnJoin);
+        actions.appendChild(btnHide);
+
+        li.appendChild(info);
+        li.appendChild(actions);
         list.appendChild(li);
     });
+}
+
+async function hideGame(gameId) {
+    if(!confirm("Hide this game from your history?")) return;
+
+    const response = await fetch(`${API_URL}/games/${gameId}/hide`, {
+        method: 'POST',
+        headers: { 'Authorization': authHeader }
+    });
+
+    if (response.ok) {
+        // Refresh the list
+        fetch(`${API_URL}/games`, { headers: { 'Authorization': authHeader } })
+            .then(r => r.json())
+            .then(loadHistory);
+    } else {
+        alert("Failed to hide game.");
+    }
 }
 
 function getOpponentName(game) {
