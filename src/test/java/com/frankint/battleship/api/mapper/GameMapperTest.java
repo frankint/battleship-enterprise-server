@@ -121,7 +121,7 @@ class GameMapperTest {
 
         GameDTO dto = mapper.toDTO(game, "p1");
 
-        assertEquals(GameState.ACTIVE, dto.state());
+        assertEquals(GameState.SETUP, dto.state());
         assertEquals("p1", dto.currentTurnPlayerId());
         assertEquals(null, dto.winnerId());
     }

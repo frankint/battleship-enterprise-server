@@ -4,8 +4,7 @@ import com.frankint.battleship.domain.model.Coordinate;
 import com.frankint.battleship.domain.model.Orientation;
 
 public record PlaceShipRequest(
-        String shipId,
-        int size,
+        String shipType,
         Coordinate start,
         Orientation orientation
 ) {

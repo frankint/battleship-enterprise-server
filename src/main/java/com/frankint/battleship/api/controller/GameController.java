@@ -43,14 +43,13 @@ public class GameController {
     @PostMapping("/{gameId}/place")
     public ResponseEntity<GameDTO> placeShip(
             @PathVariable String gameId,
-            @RequestHeader("X-Player-ID") String playerId, // Identifying the user via Header
+            @RequestHeader("X-Player-ID") String playerId,
             @RequestBody PlaceShipRequest request) {
 
         Game game = gameService.placeShip(
                 gameId,
                 playerId,
-                request.shipId(),
-                request.size(),
+                request.shipType(),
                 request.start(),
                 request.orientation()
         );

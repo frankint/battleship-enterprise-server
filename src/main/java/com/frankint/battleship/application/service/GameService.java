@@ -39,19 +39,14 @@ public class GameService {
         return gameRepository.save(game);
     }
 
-    public Game placeShip(String gameId, String playerId, String shipId, int length, Coordinate start, Orientation orientation) {
+    public Game placeShip(String gameId, String playerId, String shipTypeId, Coordinate start, Orientation orientation) {
         Game game = getGameOrThrow(gameId);
 
-        // We need to find the correct player's board
-        // Note: You might need to add a helper method in Game.java like getPlayer(id)
-        Player player = game.getPlayer1().getId().equals(playerId) ? game.getPlayer1() : game.getPlayer2();
+        // 1. Validate Ship Type
+        ShipType type = ShipType.fromId(shipTypeId);
 
-        if (player == null || !player.getId().equals(playerId)) {
-            throw new IllegalArgumentException("Player not part of this game");
-        }
-
-        // Execute domain logic
-        player.getBoard().placeShip(shipId, length, start, orientation);
+        // 2. Execute Logic
+        game.placeShip(playerId, type, start, orientation);
 
         return gameRepository.save(game);
     }
