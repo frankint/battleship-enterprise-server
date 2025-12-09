@@ -5,6 +5,9 @@ import com.frankint.battleship.domain.exception.GameNotFoundException;
 import com.frankint.battleship.domain.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -12,48 +15,40 @@ public class GameService {
 
     private final GameRepository gameRepository;
 
-    /**
-     * Starts a new game with the initial player.
-     * Note: In a real app, we would look up the Player details from a User DB.
-     */
+    // Logic stays the same, but we ensure the caller (Controller) passes the secure ID
+    @Transactional
     public Game createGame(String playerId) {
-        Board emptyBoard = new Board(10, 10); // Standard 10x10 board
+        Board emptyBoard = new Board(10, 10);
         Player player1 = new Player(playerId, emptyBoard);
-
         Game game = new Game(player1);
-
         return gameRepository.save(game);
     }
 
-    /**
-     * Joins an existing game.
-     */
+    @Transactional
     public Game joinGame(String gameId, String playerId) {
         Game game = getGameOrThrow(gameId);
 
+        // Check if player is already in the game (Idempotency)
+        if (game.getPlayer1().getId().equals(playerId)) {
+            return game; // Re-joining their own game
+        }
+
         Board emptyBoard = new Board(10, 10);
         Player player2 = new Player(playerId, emptyBoard);
-
         game.join(player2);
 
         return gameRepository.save(game);
     }
 
+    @Transactional
     public Game placeShip(String gameId, String playerId, String shipTypeId, Coordinate start, Orientation orientation) {
         Game game = getGameOrThrow(gameId);
-
-        // 1. Validate Ship Type
         ShipType type = ShipType.fromId(shipTypeId);
-
-        // 2. Execute Logic
         game.placeShip(playerId, type, start, orientation);
-
         return gameRepository.save(game);
     }
 
-    /**
-     * Orchestrates the move: Load -> Fire -> Save
-     */
+    @Transactional
     public Game makeMove(String gameId, String playerId, Coordinate target) {
         Game game = getGameOrThrow(gameId);
 
@@ -63,11 +58,11 @@ public class GameService {
         return gameRepository.save(game);
     }
 
-    public Game getGame(String gameId) {
-        return getGameOrThrow(gameId);
+    public List<Game> getPlayerHistory(String playerId) {
+        return gameRepository.findGamesByPlayer(playerId);
     }
 
-    // Helper method to DRY (Don't Repeat Yourself)
+    // Helper
     private Game getGameOrThrow(String gameId) {
         return gameRepository.findById(gameId)
                 .orElseThrow(() -> new GameNotFoundException(gameId));

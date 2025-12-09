@@ -9,10 +9,13 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 // 1. The Internal JPA Interface
-interface JpaGameRepository extends JpaRepository<GameEntity, String> { }
+interface JpaGameRepository extends JpaRepository<GameEntity, String> {
+    List<GameEntity> findByPlayer1_IdOrPlayer2_Id(String p1Id, String p2Id);
+}
 
 // 2. The Public Adapter (The one GameService uses)
 @Primary
@@ -38,5 +41,12 @@ public class PostgresGameRepository implements GameRepository {
     @Override
     public void delete(String gameId) {
         jpaRepository.deleteById(gameId);
+    }
+    @Override
+    public List<Game> findGamesByPlayer(String playerId) {
+        return jpaRepository.findByPlayer1_IdOrPlayer2_Id(playerId, playerId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }
