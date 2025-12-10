@@ -757,10 +757,11 @@ async function sendInvite(username) {
 
     if (response.ok) {
         const gameId = await response.text();
-        // Automatically join the game I just created
         joinGame(gameId);
     } else {
-        alert("Could not send invite (User might not exist).");
+        // Show the specific error from the server (e.g., "User 'bob' is not online")
+        const errorMsg = await response.text();
+        alert(errorMsg);
     }
 }
 
