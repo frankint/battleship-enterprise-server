@@ -4,7 +4,9 @@ import com.frankint.battleship.application.service.GameService;
 import com.frankint.battleship.application.service.SocialService;
 import com.frankint.battleship.domain.model.Game;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +20,8 @@ import java.util.Map;
 public class SocialController {
 
     private final SocialService socialService;
-    private final GameService gameService; // Needed to create the game for the invite
+    private final GameService gameService;
+    private final SimpUserRegistry userRegistry;
 
     @GetMapping("/friends")
     public List<String> getFriends(@AuthenticationPrincipal UserDetails user) {
@@ -34,10 +37,20 @@ public class SocialController {
     public ResponseEntity<String> sendInvite(@AuthenticationPrincipal UserDetails user, @RequestBody Map<String, String> body) {
         String opponent = body.get("username");
 
-        // 1. Create a new game
+        // 1. CHECK IF USER IS ONLINE
+        // The registry contains all users currently connected via WebSocket
+        boolean isOnline = userRegistry.getUser(opponent) != null;
+
+        if (!isOnline) {
+            // Return 404 or 400 if user is offline
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("User '" + opponent + "' is not online.");
+        }
+
+        // 2. Create game only if online
         Game game = gameService.createGame(user.getUsername());
 
-        // 2. Notify the opponent
+        // 3. Notify
         socialService.sendInvite(user.getUsername(), opponent, game.getId());
 
         return ResponseEntity.ok(game.getId());
