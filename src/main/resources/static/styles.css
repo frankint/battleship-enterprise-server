@@ -372,7 +372,7 @@ button.small { padding: 6px 12px; font-size: 0.85rem; }
     border: 1px solid rgba(255,255,255,0.1);
 }
 
-.cell.hit { background: var(--cell-hit); }
+.cell.hit { background: var(--cell-hit); z-index: 10; }
 .cell.miss { background: var(--cell-miss); }
 
 /* Animation for hit/miss */
@@ -508,4 +508,14 @@ button.small { padding: 6px 12px; font-size: 0.85rem; }
     width: max-content;
     max-width: 90vw;
     border: 1px solid rgba(255,255,255,0.2);
+}
+
+.ship-sunk {
+    background-color: rgba(192, 57, 43, 0.6) !important; /* Dark Red transparent */
+    border: 2px solid #c0392b;
+}
+
+.ship-revealed {
+    background-color: rgba(127, 140, 141, 0.5) !important; /* Grey transparent */
+    border: 2px dashed #7f8c8d;
 }

@@ -6,8 +6,9 @@ import java.util.List;
 
 public record PlayerDTO(
         String playerId,
-        List<ShipDTO> ships,      // Only populated if "self"
-        List<Coordinate> hits,    // Shots fired by opponent that hit ships
-        List<Coordinate> misses   // Shots fired by opponent that missed
+        List<ShipDTO> ships,      // My ships (or All ships if game over)
+        List<ShipDTO> sunkShips,  // Opponent's sunk ships (for immediate reveal)
+        List<Coordinate> hits,
+        List<Coordinate> misses
 ) {
 }

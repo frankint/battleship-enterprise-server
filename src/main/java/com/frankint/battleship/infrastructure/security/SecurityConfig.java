@@ -13,14 +13,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for simple REST API testing
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/ws/**").permitAll() // Allow Login/Register & WebSocket handshake
-                        .requestMatchers("/", "/index.html", "/app.js", "/styles.css").permitAll() // Allow Frontend
-                        .anyRequest().authenticated() // Block everything else
+                        .requestMatchers("/auth/**", "/ws/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/*.js", "/*.css", "/favicon.ico").permitAll()
+                        .anyRequest().authenticated()
                 )
-                .httpBasic(basic -> {}); // Use HTTP Basic Auth (Simple header: Authorization: Basic Base64(user:pass))
-
+                .httpBasic(basic -> basic.authenticationEntryPoint(
+                        (request, response, authException) -> {
+                            // Send 401 directly without the 'WWW-Authenticate' header
+                            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
+                        }
+                ));
         return http.build();
     }
 
