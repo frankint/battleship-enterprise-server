@@ -73,6 +73,11 @@ public class GameService {
         gameRepository.hideGame(gameId, userId);
     }
 
+    @Transactional
+    public void deleteGame(String gameId) {
+        gameRepository.delete(gameId);
+    }
+
     // Helper
     private Game getGameOrThrow(String gameId) {
         return gameRepository.findById(gameId)

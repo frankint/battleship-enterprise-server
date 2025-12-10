@@ -33,22 +33,39 @@
 </div>
 
 <div id="lobby-screen" class="screen hidden">
-    <div class="card wide">
-        <div class="header">
+    <div class="card wide lobby-container">
+
+        <div class="lobby-header">
             <h2>Welcome, <span id="display-user"></span></h2>
-            <button onclick="logout()">Logout</button>
+            <button class="btn-cancel" onclick="logout()">Logout</button>
         </div>
 
-        <div class="lobby-controls">
-            <button class="primary" onclick="createGame()">Create New Game</button>
-            <div class="join-box">
-                <input type="text" id="gameIdInput" placeholder="Enter Game ID">
-                <button onclick="joinGame()">Join</button>
+        <div class="lobby-columns">
+            <div class="lobby-main">
+                <div class="lobby-controls">
+                    <button class="primary" onclick="createGame()">Create Public Game</button>
+                    <div class="join-box">
+                        <input type="text" id="gameIdInput" placeholder="Enter Game ID">
+                        <button onclick="joinGame()">Join</button>
+                    </div>
+                </div>
+                <h3>Recent Games</h3>
+                <ul id="games-list"></ul>
+            </div>
+
+            <div class="lobby-social">
+                <h3>Friends & Invites</h3>
+
+                <div class="add-friend-box">
+                    <input type="text" id="friendInput" placeholder="Username">
+                    <button class="primary" onclick="addFriend()" title="Add to Friends">+</button>
+                    <button class="btn-challenge" onclick="challengeStranger()" title="Challenge directly">⚔</button>
+                </div>
+
+                <ul id="friends-list">
+                </ul>
             </div>
         </div>
-
-        <h3>Your Recent Games</h3>
-        <ul id="games-list"></ul>
     </div>
 </div>
 

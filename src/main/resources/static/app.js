@@ -12,6 +12,8 @@ let selectedShipType = null;
 let isRegisterMode = false;
 let pendingPlacement = null; // Stores { x, y, type, orientation }
 let lastKnownState = null;
+let gameSub = null;  // Stores the game state subscription
+let errorSub = null; // Stores the error subscription
 
 // ================= INITIALIZATION =================
 // Run this when the script loads to check for existing session
@@ -35,6 +37,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.getElementById('display-user').innerText = currentUser;
                     showScreen('lobby-screen');
                     response.json().then(loadHistory);
+                    loadFriends();
+                    connectGlobalSocket();
                 } else {
                     logout();
                 }
@@ -117,6 +121,8 @@ async function handleAuth() {
 
             showScreen('lobby-screen');
             loadHistory(await loginResponse.json());
+            loadFriends();
+            connectGlobalSocket();
             msg.innerText = "";
         } else {
             throw new Error("Invalid username or password.");
@@ -236,33 +242,54 @@ function enterGame(game) {
     document.getElementById('display-game-id').innerText = game.gameId;
     showScreen('game-screen');
     renderGame(game);
-    connectWebSocket();
+    subscribeToGame(currentGameId);
 }
 
 function leaveGame() {
-    if (stompClient) stompClient.disconnect();
-    // Refresh history
+    // Do NOT disconnect. Just unsubscribe from the game.
+    if (gameSub) gameSub.unsubscribe();
+    if (errorSub) errorSub.unsubscribe();
+
+    gameSub = null;
+    errorSub = null;
+    currentGameId = null;
+
+    // Refresh data
     fetch(`${API_URL}/games`, { headers: { 'Authorization': authHeader } })
         .then(r => r.json())
         .then(loadHistory);
+
     showScreen('lobby-screen');
 }
 
 function connectWebSocket() {
+    // Prevent double connection
+    if (stompClient && stompClient.connected) return;
+
     const socket = new SockJS(WS_URL);
     stompClient = Stomp.over(socket);
     stompClient.debug = null;
 
     stompClient.connect({}, function () {
-        stompClient.subscribe(`/topic/game/${currentGameId}/${currentUser}`, function (msg) {
-            renderGame(JSON.parse(msg.body));
+        // ALWAYS subscribe to personal notifications
+        stompClient.subscribe(`/topic/user/${currentUser}/notifications`, function (msg) {
+            const notif = JSON.parse(msg.body);
+            if (notif.type === 'CHALLENGE') {
+                handleIncomingChallenge(notif);
+            }
         });
-        stompClient.subscribe(`/topic/game/${currentGameId}/${currentUser}/error`, function (msg) {
-            showError(JSON.parse(msg.body).message);
-        });
+
+        // IF inside a game, subscribe to game updates
+        if (currentGameId) {
+            stompClient.subscribe(`/topic/game/${currentGameId}/${currentUser}`, function (msg) {
+                renderGame(JSON.parse(msg.body));
+            });
+            stompClient.subscribe(`/topic/game/${currentGameId}/${currentUser}/error`, function (msg) {
+                showError(JSON.parse(msg.body).message);
+            });
+        }
     });
 }
-
 // ================= RENDERING =================
 const ALL_SHIPS = [
     { id: "Carrier", size: 5 }, { id: "Battleship", size: 4 },
@@ -592,4 +619,182 @@ async function handleGuestLogin() {
     } catch (e) {
         msg.innerText = e.message;
     }
+}
+// ================= SOCIAL FEATURES =================
+async function addFriend() {
+    const input = document.getElementById('friendInput');
+    const username = input.value.trim();
+    if(!username) return;
+
+    await fetch(`${API_URL}/social/friends`, {
+        method: 'POST',
+        headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: username })
+    });
+
+    input.value = '';
+    loadFriends(); // Refresh list
+}
+
+
+function loadFriends() {
+    fetch(`${API_URL}/social/friends`, { headers: { 'Authorization': authHeader } })
+        .then(r => r.json())
+        .then(friends => {
+            const list = document.getElementById('friends-list');
+            list.innerHTML = '';
+
+            // ... (empty check) ...
+
+            friends.forEach(friendName => {
+                const li = document.createElement('li');
+
+                const span = document.createElement('span');
+                span.className = 'friend-name';
+                span.innerText = friendName;
+
+                const btnBox = document.createElement('div');
+                btnBox.style.display = 'flex';
+                btnBox.style.gap = '5px';
+
+                // Challenge Button
+                const btnChal = document.createElement('button');
+                btnChal.className = 'btn-challenge';
+                btnChal.innerText = "⚔";
+                btnChal.title = "Challenge";
+                btnChal.onclick = () => sendInvite(friendName);
+
+                // Remove Button (NEW)
+                const btnRem = document.createElement('button');
+                btnRem.style.backgroundColor = '#c0392b';
+                btnRem.style.padding = '5px 8px';
+                btnRem.innerText = "🗑";
+                btnRem.title = "Remove Friend";
+                btnRem.onclick = () => removeFriend(friendName);
+
+                btnBox.appendChild(btnChal);
+                btnBox.appendChild(btnRem);
+
+                li.appendChild(span);
+                li.appendChild(btnBox);
+                list.appendChild(li);
+            });
+        });
+}
+
+async function removeFriend(username) {
+    if(!confirm(`Remove ${username} from friends?`)) return;
+
+    await fetch(`${API_URL}/social/friends/${username}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': authHeader }
+    });
+    loadFriends();
+}
+
+async function sendInvite(username) {
+    if(!confirm(`Challenge ${username} to a game?`)) return;
+
+    const response = await fetch(`${API_URL}/social/invite`, {
+        method: 'POST',
+        headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: username })
+    });
+
+    if (response.ok) {
+        const gameId = await response.text();
+        // Automatically join the game I just created
+        joinGame(gameId);
+    } else {
+        alert("Could not send invite (User might not exist).");
+    }
+}
+
+function handleIncomingChallenge(notif) {
+    if (confirm(notif.message + "\nClick OK to Accept, Cancel to Deny.")) {
+        joinGame(notif.gameId);
+    } else {
+        // Send Decline
+        fetch(`${API_URL}/social/invite/decline`, {
+            method: 'POST',
+            headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                gameId: notif.gameId,
+                challenger: notif.sender
+            })
+        });
+    }
+}
+
+// ================= WEBSOCKETS =================
+
+function connectGlobalSocket() {
+    // If already connected, do nothing
+    if (stompClient && stompClient.connected) return;
+
+    const socket = new SockJS(WS_URL);
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null; // Disable debug logs for cleaner console
+
+    stompClient.connect({}, function () {
+        console.log("Connected to WebSocket");
+
+        // 1. ALWAYS Subscribe to Personal Notifications (Invites)
+        stompClient.subscribe(`/topic/user/${currentUser}/notifications`, function (msg) {
+            const notif = JSON.parse(msg.body);
+
+            if (notif.type === 'CHALLENGE') {
+                handleIncomingChallenge(notif);
+            }
+            else if (notif.type === 'DECLINED') {
+                alert(notif.message);
+                leaveGame(); // Kick them out of the "Waiting" room back to Lobby
+            }
+        });
+
+        // 2. If we happened to be in a game (e.g. reconnect logic), subscribe now
+        if (currentGameId) {
+            subscribeToGame(currentGameId);
+        }
+    });
+}
+
+function subscribeToGame(gameId) {
+    if (!stompClient || !stompClient.connected) {
+        console.error("Socket not connected yet. Waiting...");
+        setTimeout(() => subscribeToGame(gameId), 500);
+        return;
+    }
+
+    // 1. Unsubscribe from previous game if needed
+    if (gameSub) gameSub.unsubscribe();
+    if (errorSub) errorSub.unsubscribe();
+
+    console.log("Subscribing to Game:", gameId);
+
+    // 2. Subscribe and Store the reference
+    gameSub = stompClient.subscribe(`/topic/game/${gameId}/${currentUser}`, function (msg) {
+        renderGame(JSON.parse(msg.body));
+    });
+
+    errorSub = stompClient.subscribe(`/topic/game/${gameId}/${currentUser}/error`, function (msg) {
+        showError(JSON.parse(msg.body).message);
+    });
+}
+
+function challengeStranger() {
+    const input = document.getElementById('friendInput');
+    const username = input.value.trim();
+    if(!username) return alert("Enter a username to challenge");
+
+    sendInvite(username); // Re-use existing invite logic
 }
