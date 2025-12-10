@@ -8,6 +8,7 @@ import com.frankint.battleship.domain.model.Game;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ public class GameController {
 
     private final GameService gameService;
     private final GameMapper gameMapper;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // 1. Create Game - No body needed, ID comes from Session
     @PostMapping
@@ -38,8 +40,26 @@ public class GameController {
             @AuthenticationPrincipal UserDetails user) {
 
         Game game = gameService.joinGame(gameId, user.getUsername());
+        GameDTO p2Dto = gameMapper.toDTO(game, user.getUsername());
 
-        return ResponseEntity.ok(gameMapper.toDTO(game, user.getUsername()));
+        // Notify Player 1 that the game has started!
+        // We must reconstruct the DTO from P1's perspective
+        if (game.getPlayer1() != null) {
+            String p1Username = game.getPlayer1().getId();
+
+            // Only send if P1 is actually a different person (not testing vs self)
+            if (!p1Username.equals(user.getUsername())) {
+                GameDTO p1Dto = gameMapper.toDTO(game, p1Username);
+
+                // Broadcast to P1's specific topic
+                messagingTemplate.convertAndSend(
+                        "/topic/game/" + gameId + "/" + p1Username,
+                        p1Dto
+                );
+            }
+        }
+
+        return ResponseEntity.ok(p2Dto);
     }
 
     // 3. Place Ship - User from Session
@@ -60,7 +80,7 @@ public class GameController {
         return ResponseEntity.ok(gameMapper.toDTO(game, user.getUsername()));
     }
 
-    // 4. NEW: Game History
+    // 4. Game History
     @GetMapping
     public ResponseEntity<List<GameDTO>> getMyGames(@AuthenticationPrincipal UserDetails user) {
         List<Game> games = gameService.getPlayerHistory(user.getUsername());
@@ -71,5 +91,14 @@ public class GameController {
                 .toList();
 
         return ResponseEntity.ok(dtos);
+    }
+
+    @PostMapping("/{gameId}/hide")
+    public ResponseEntity<Void> hideGame(
+            @PathVariable String gameId,
+            @AuthenticationPrincipal UserDetails user) {
+
+        gameService.hideGame(gameId, user.getUsername());
+        return ResponseEntity.ok().build();
     }
 }
