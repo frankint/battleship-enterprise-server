@@ -18,6 +18,16 @@ let errorSub = null; // Stores the error subscription
 // ================= INITIALIZATION =================
 // Run this when the script loads to check for existing session
 document.addEventListener("DOMContentLoaded", () => {
+    // Add Enter key listeners for login
+    const inputs = [document.getElementById('username'), document.getElementById('password')];
+    inputs.forEach(input => {
+        if(input) {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleAuth();
+            });
+        }
+    });
+
     // Check LocalStorage (Registered) OR SessionStorage (Guest)
     let savedUser = localStorage.getItem("battleship_user");
     let savedPass = localStorage.getItem("battleship_token");
@@ -65,7 +75,7 @@ function toggleAuthMode() {
         toggleText.innerText = "Have an account?";
         toggleLink.innerText = "Login here";
     } else {
-        title.innerText = "Login";
+        title.innerText = "Battleship";
         btn.innerText = "Login";
         toggleText.innerText = "Need an account?";
         toggleLink.innerText = "Click here";
@@ -190,13 +200,15 @@ function loadHistory(games) {
         // 1. Open Button
         const btnJoin = document.createElement('button');
         btnJoin.innerText = "Open";
+        btnJoin.className = "small primary";
         btnJoin.onclick = () => joinGame(g.gameId);
 
         // 2. Hide Button (NEW)
         const btnHide = document.createElement('button');
         btnHide.innerText = "❌";
         btnHide.title = "Remove from history";
-        btnHide.style.backgroundColor = "#c0392b"; // Red
+        btnHide.className = "small secondary";
+        btnHide.style.backgroundColor = "#ef4444"; // Red
         btnHide.onclick = (e) => {
             e.stopPropagation(); // Prevent triggering other clicks
             hideGame(g.gameId);
@@ -662,15 +674,15 @@ function loadFriends() {
 
                 // Challenge Button
                 const btnChal = document.createElement('button');
-                btnChal.className = 'btn-challenge';
+                btnChal.className = 'icon-btn primary';
                 btnChal.innerText = "⚔";
                 btnChal.title = "Challenge";
                 btnChal.onclick = () => sendInvite(friendName);
 
                 // Remove Button (NEW)
                 const btnRem = document.createElement('button');
-                btnRem.style.backgroundColor = '#c0392b';
-                btnRem.style.padding = '5px 8px';
+                btnRem.className = "icon-btn secondary";
+                btnRem.style.backgroundColor = '#ef4444';
                 btnRem.innerText = "🗑";
                 btnRem.title = "Remove Friend";
                 btnRem.onclick = () => removeFriend(friendName);
