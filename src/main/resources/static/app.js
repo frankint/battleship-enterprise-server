@@ -14,6 +14,7 @@ let pendingPlacement = null; // Stores { x, y, type, orientation }
 let lastKnownState = null;
 let gameSub = null;  // Stores the game state subscription
 let errorSub = null; // Stores the error subscription
+let lastSunkCount = 0;
 
 // ================= INITIALIZATION =================
 // Run this when the script loads to check for existing session
@@ -251,6 +252,7 @@ function getOpponentName(game) {
 // ================= GAME LOGIC =================
 function enterGame(game) {
     currentGameId = game.gameId;
+    lastSunkCount = 0;
     document.getElementById('display-game-id').innerText = game.gameId;
     showScreen('game-screen');
     renderGame(game);
@@ -310,11 +312,11 @@ const ALL_SHIPS = [
 ];
 
 function renderGame(state) {
-    lastKnownState = state; // Critical: Save state for re-rendering during confirm/cancel
+    lastKnownState = state;
 
     document.getElementById('game-state').innerText = state.state;
 
-    // Turn Indicator
+    // Turn Indicator Logic
     const turnSpan = document.getElementById('turn-indicator');
     if(state.state === 'ACTIVE') {
         if(state.currentTurnPlayerId === currentUser) {
@@ -328,20 +330,31 @@ function renderGame(state) {
         turnSpan.innerText = "";
     }
 
-    // Setup Controls Visibility
+    if (state.opponent && state.opponent.sunkShips) {
+        const currentCount = state.opponent.sunkShips.length;
+        if (currentCount > lastSunkCount) {
+            // We have a new sunk ship!
+            // Find which one is new (optional, but nice)
+            // Simple approach: Just alert
+            showError("ENEMY SHIP SUNK!");
+            // Note: showError uses the red toast, which is perfect for this.
+        }
+        lastSunkCount = currentCount;
+    }
+
+    // Setup Controls Logic
     const setupControls = document.getElementById('setup-controls');
     const shipYard = document.getElementById('ship-yard');
     const actions = document.getElementById('placement-actions');
 
     if (state.state === 'SETUP' || state.state === 'WAITING_FOR_PLAYER') {
         setupControls.classList.remove('hidden');
-
         if (pendingPlacement) {
-            shipYard.classList.add('hidden');     // Hide list
-            actions.classList.remove('hidden');   // Show Confirm/Cancel
+            shipYard.classList.add('hidden');
+            actions.classList.remove('hidden');
         } else {
-            shipYard.classList.remove('hidden');  // Show list
-            actions.classList.add('hidden');      // Hide Confirm/Cancel
+            shipYard.classList.remove('hidden');
+            actions.classList.add('hidden');
             renderShipYard(state.self.ships);
         }
     } else {
@@ -351,6 +364,7 @@ function renderGame(state) {
     renderBoard('my-board', state.self, false);
     renderBoard('opponent-board', state.opponent, true);
 
+    // Game Over Alert
     if (state.state === 'FINISHED') {
         if (state.winnerId === currentUser) alert("VICTORY!");
         else alert("DEFEAT!");
@@ -429,43 +443,48 @@ function renderBoard(elementId, playerData, isOpponent) {
 
             let alreadyShot = false;
 
-            // --- RENDER STATE (Ships, Hits, Misses) ---
             if (playerData) {
-                // Ships (Only mine)
-                if (!isOpponent && playerData.ships.some(s => s.coordinates.some(c => c.x===x && c.y===y))) {
-                    cell.classList.add('ship');
+                // 1. Render Standard Ships (My ships OR Game Over revealed ships)
+                if (playerData.ships && playerData.ships.some(s => s.coordinates.some(c => c.x===x && c.y===y))) {
+                    if (isOpponent) {
+                        cell.classList.add('ship-revealed'); // Grey for Game Over reveal
+                    } else {
+                        cell.classList.add('ship'); // Standard grey for me
+                    }
                 }
-                // Hits
+
+                // 2. ISSUE 21: Render Sunk Ships (Opponent only)
+                if (isOpponent && playerData.sunkShips && playerData.sunkShips.some(s => s.coordinates.some(c => c.x===x && c.y===y))) {
+                    cell.classList.remove('ship-revealed'); // Override grey
+                    cell.classList.add('ship-sunk'); // Red border
+                }
+
+                // 3. Hits
                 if (playerData.hits && playerData.hits.some(c => c.x===x && c.y===y)) {
                     cell.classList.add('hit');
                     alreadyShot = true;
                 }
-                // Misses
+                // 4. Misses
                 if (playerData.misses && playerData.misses.some(c => c.x===x && c.y===y)) {
                     cell.classList.add('miss');
                     alreadyShot = true;
                 }
             }
 
-            // Only on my board, and only if we are waiting for confirmation
+            // --- PENDING PLACEMENT (My Board) ---
             if (!isOpponent && pendingPlacement) {
                 const shipInfo = ALL_SHIPS.find(s => s.id === pendingPlacement.shipType);
                 const p = pendingPlacement;
                 let isPendingCell = false;
-
-                // Calculate if this x,y is part of the pending ship
                 for(let i=0; i < shipInfo.size; i++) {
                     const px = p.x + (p.orientation === "HORIZONTAL" ? i : 0);
                     const py = p.y + (p.orientation === "VERTICAL" ? i : 0);
                     if (x === px && y === py) isPendingCell = true;
                 }
-
-                if (isPendingCell) {
-                    cell.classList.add('preview-pending');
-                }
+                if (isPendingCell) cell.classList.add('preview-pending');
             }
 
-            // --- INTERACTION LOGIC ---
+            // --- CLICK HANDLERS ---
             if (isOpponent) {
                 if (alreadyShot) {
                     cell.style.cursor = 'not-allowed';
@@ -475,10 +494,8 @@ function renderBoard(elementId, playerData, isOpponent) {
                     cell.style.cursor = 'crosshair';
                 }
             } else {
-                // MY BOARD PLACEMENT
                 cell.onclick = () => handleGridClick(isOpponent, x, y);
-
-                // Disable hover if we are stuck in "Pending Confirmation" mode
+                // Hover Effects
                 if (selectedShipType && !pendingPlacement) {
                     cell.onmouseenter = () => handleShipHover(x, y, playerData);
                     cell.onmouseleave = () => clearPreviews();
@@ -583,12 +600,29 @@ function confirmPlacement() {
     }).then(async r => {
         if (r.ok) {
             const newState = await r.json();
-            pendingPlacement = null; // Clear pending
-            selectedShipType = null; // Clear selection
+
+            // 1. Clear current state
+            pendingPlacement = null;
+            selectedShipType = null;
+
+            // 2. Logic to Auto-Select Next Ship
+            const placedShips = newState.self.ships;
+            // Find the first ship in ALL_SHIPS that is NOT in placedShips
+            const nextShip = ALL_SHIPS.find(s => !placedShips.some(placed => placed.id === s.id));
+
+            if (nextShip) {
+                selectedShipType = nextShip.id;
+            }
+
+            // 3. Render Game (which will now highlight the new ship)
             renderGame(newState);
+
+            // 4. Clear previews
+            clearPreviews();
+
         } else {
             showError("Invalid Placement (Overlap or Bounds)");
-            cancelPlacement(); // Reset on error
+            cancelPlacement();
         }
     });
 }
@@ -811,4 +845,38 @@ function challengeStranger() {
     if(!username) return alert("Enter a username to challenge");
 
     sendInvite(username); // Re-use existing invite logic
+}
+// ================= KEYBOARD CONTROLS =================
+
+document.addEventListener('keydown', (e) => {
+    // Only active if we are in the SETUP phase
+    const setupControls = document.getElementById('setup-controls');
+    if (setupControls.classList.contains('hidden')) return;
+
+    // Check for 'R' key
+    if (e.key.toLowerCase() === 'r') {
+        toggleOrientation();
+    }
+});
+
+function toggleOrientation() {
+    const horizBtn = document.querySelector('input[value="HORIZONTAL"]');
+    const vertBtn = document.querySelector('input[value="VERTICAL"]');
+
+    if (horizBtn.checked) {
+        vertBtn.checked = true;
+    } else {
+        horizBtn.checked = true;
+    }
+
+    // If we have a pending placement (Yellow Ship), update its orientation instantly
+    if (pendingPlacement) {
+        pendingPlacement.orientation = vertBtn.checked ? "VERTICAL" : "HORIZONTAL";
+        renderGame(lastKnownState); // Re-render to show rotation
+    }
+
+    // If we just have a ship selected (Green Hover), force a re-render to update hover preview
+    if (selectedShipType && !pendingPlacement) {
+        renderGame(lastKnownState);
+    }
 }
