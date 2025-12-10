@@ -626,6 +626,8 @@ async function handleGuestLogin() {
         document.getElementById('display-user').innerText = currentUser;
         showScreen('lobby-screen');
         loadHistory([]); // New guest has no history
+        loadFriends();
+        connectGlobalSocket();
         msg.innerText = "";
 
     } catch (e) {
