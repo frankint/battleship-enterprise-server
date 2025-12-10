@@ -17,13 +17,18 @@ public class GameMapper {
         Player self;
         Player opponent;
 
-        // Determine who is requesting
-        if (game.getPlayer1().getId().equals(requestingPlayerId)) {
+        String p1Id = game.getPlayer1().getId();
+        // Handle potential null P2 (if game is waiting)
+        String p2Id = game.getPlayer2() != null ? game.getPlayer2().getId() : null;
+
+        if (p1Id.equals(requestingPlayerId)) {
             self = game.getPlayer1();
             opponent = game.getPlayer2();
-        } else {
+        } else if (p2Id != null && p2Id.equals(requestingPlayerId)) {
             self = game.getPlayer2();
             opponent = game.getPlayer1();
+        } else {
+            throw new IllegalArgumentException("User " + requestingPlayerId + " is not part of this game");
         }
 
         return new GameDTO(
