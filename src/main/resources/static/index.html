@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Battleship Enterprise</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
@@ -10,18 +11,21 @@
 <body>
 
 <div id="auth-screen" class="screen">
-    <div class="card">
-        <h1 id="auth-title">Login</h1>
+    <div class="card auth-card">
+        <h1 id="auth-title">Battleship</h1>
+        <p class="subtitle">Command your fleet.</p>
 
         <div class="input-group">
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
+            <input type="text" id="username" placeholder="Username" autocomplete="username">
+            <input type="password" id="password" placeholder="Password" autocomplete="current-password">
         </div>
 
-        <div class="buttons">
+        <div class="buttons vertical-buttons">
             <button id="btn-action" class="primary" onclick="handleAuth()">Login</button>
-            <button class="secondary" onclick="handleGuestLogin()">Play as Guest</button>
+            <button class="secondary outline" onclick="handleGuestLogin()">Play as Guest</button>
         </div>
+
+        <div class="divider"></div>
 
         <p class="toggle-link">
             <span id="toggle-text">Need an account?</span>
@@ -36,73 +40,97 @@
     <div class="card wide lobby-container">
 
         <div class="lobby-header">
-            <h2>Welcome, <span id="display-user"></span></h2>
-            <button class="btn-cancel" onclick="logout()">Logout</button>
+            <div class="user-info">
+                <h2>Welcome, <span id="display-user">Commander</span></h2>
+                <span class="status-dot online"></span>
+            </div>
+            <button class="btn-cancel outline small" onclick="logout()">Logout</button>
         </div>
 
         <div class="lobby-columns">
             <div class="lobby-main">
                 <div class="lobby-controls">
-                    <button class="primary" onclick="createGame()">Create Public Game</button>
+                    <button class="primary full-width-mobile" onclick="createGame()">Create Public Game</button>
                     <div class="join-box">
                         <input type="text" id="gameIdInput" placeholder="Enter Game ID">
-                        <button onclick="joinGame()">Join</button>
+                        <button class="secondary" onclick="joinGame()">Join</button>
                     </div>
                 </div>
-                <h3>Recent Games</h3>
-                <ul id="games-list"></ul>
+
+                <div class="section-header">
+                    <h3>Recent Games</h3>
+                </div>
+                <div class="scroll-list-container">
+                    <ul id="games-list" class="styled-list"></ul>
+                </div>
             </div>
 
             <div class="lobby-social">
-                <h3>Friends & Invites</h3>
+                <div class="section-header">
+                    <h3>Friends & Invites</h3>
+                </div>
 
                 <div class="add-friend-box">
                     <input type="text" id="friendInput" placeholder="Username">
-                    <button class="primary" onclick="addFriend()" title="Add to Friends">+</button>
-                    <button class="btn-challenge" onclick="challengeStranger()" title="Challenge directly">⚔</button>
+                    <button class="primary icon-btn" onclick="addFriend()" title="Add to Friends">+</button>
+                    <button class="secondary icon-btn" onclick="challengeStranger()" title="Challenge directly">⚔</button>
                 </div>
 
-                <ul id="friends-list">
-                </ul>
+                <div class="scroll-list-container">
+                    <ul id="friends-list" class="styled-list">
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <div id="game-screen" class="screen hidden">
-    <div class="game-header">
-        <button onclick="leaveGame()">← Back to Lobby</button>
-        <div>Game ID: <span id="display-game-id"></span></div>
-        <div>State: <span id="game-state">WAITING</span></div>
-    </div>
-
-    <div class="game-container">
-        <div class="board-section">
-            <h3>My Fleet</h3>
-            <div id="my-board" class="board"></div>
-
-            <div id="setup-controls" class="hidden">
-                <h4>Ship Yard</h4>
-                <p>Select ship, then click grid.</p>
-
-                <div class="orientation-toggle">
-                    <label><input type="radio" name="orient" value="HORIZONTAL" checked> Horizontal</label>
-                    <label><input type="radio" name="orient" value="VERTICAL"> Vertical</label>
-                </div>
-
-                <div id="ship-yard">
-                </div>
-
-                <div id="placement-actions" class="hidden">
-                    <button class="btn-confirm" onclick="confirmPlacement()">✔ Confirm</button>
-                    <button class="btn-cancel" onclick="cancelPlacement()">✘ Cancel</button>
-                </div>
+    <div class="game-wrapper">
+        <div class="game-header">
+            <button class="outline small back-btn" onclick="leaveGame()">← Lobby</button>
+            <div class="game-info">
+                <div class="badge">ID: <span id="display-game-id"></span></div>
+                <div class="badge status">State: <span id="game-state">WAITING</span></div>
             </div>
         </div>
 
-        <div class="board-section">
-            <h3>Enemy Waters <span id="turn-indicator"></span></h3>
-            <div id="opponent-board" class="board"></div>
+        <div class="game-container">
+            <div class="board-section my-section">
+                <h3>My Fleet</h3>
+                <div id="my-board" class="board"></div>
+
+                <div id="setup-controls" class="hidden setup-panel">
+                    <div class="setup-header">
+                        <h4>Ship Yard</h4>
+                        <p class="instruction">Select & Place</p>
+                    </div>
+
+                    <div class="orientation-toggle">
+                        <label class="radio-label">
+                            <input type="radio" name="orient" value="HORIZONTAL" checked>
+                            <span>Horizontal</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="orient" value="VERTICAL">
+                            <span>Vertical</span>
+                        </label>
+                    </div>
+
+                    <div id="ship-yard" class="ship-grid">
+                    </div>
+
+                    <div id="placement-actions" class="hidden floating-actions">
+                        <button class="btn-confirm" onclick="confirmPlacement()">✔ Confirm</button>
+                        <button class="btn-cancel" onclick="cancelPlacement()">✘ Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="board-section enemy-section">
+                <h3>Enemy Waters <span id="turn-indicator"></span></h3>
+                <div id="opponent-board" class="board"></div>
+            </div>
         </div>
     </div>
 
