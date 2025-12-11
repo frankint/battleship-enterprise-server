@@ -206,9 +206,10 @@ function loadHistory(games) {
 
         // 2. Hide Button (NEW)
         const btnHide = document.createElement('button');
-        btnHide.innerText = "❌";
+        btnHide.innerText = "X";
         btnHide.title = "Remove from history";
         btnHide.className = "small secondary";
+        btnHide.style.fontWeight = "bold";
         btnHide.style.backgroundColor = "#ef4444"; // Red
         btnHide.onclick = (e) => {
             e.stopPropagation(); // Prevent triggering other clicks
@@ -787,15 +788,18 @@ function handleIncomingChallenge(notif) {
 // ================= WEBSOCKETS =================
 
 function connectGlobalSocket() {
-    // If already connected, do nothing
     if (stompClient && stompClient.connected) return;
 
     const socket = new SockJS(WS_URL);
     stompClient = Stomp.over(socket);
-    stompClient.debug = null; // Disable debug logs for cleaner console
+    stompClient.debug = null;
 
-    stompClient.connect({}, function () {
-        console.log("Connected to WebSocket");
+    const headers = {
+        'Authorization': authHeader // e.g., "Basic dXNlcjpwYXNz..."
+    };
+
+    stompClient.connect(headers, function () { // Pass 'headers' as first arg
+        console.log("Connected with Auth!");
 
         // 1. ALWAYS Subscribe to Personal Notifications (Invites)
         stompClient.subscribe(`/topic/user/${currentUser}/notifications`, function (msg) {
