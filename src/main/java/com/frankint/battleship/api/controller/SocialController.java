@@ -37,20 +37,13 @@ public class SocialController {
     public ResponseEntity<String> sendInvite(@AuthenticationPrincipal UserDetails user, @RequestBody Map<String, String> body) {
         String opponent = body.get("username");
 
-        // 1. CHECK IF USER IS ONLINE
-        // The registry contains all users currently connected via WebSocket
         boolean isOnline = userRegistry.getUser(opponent) != null;
-
         if (!isOnline) {
-            // Return 404 or 400 if user is offline
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("User '" + opponent + "' is not online.");
         }
 
-        // 2. Create game only if online
         Game game = gameService.createGame(user.getUsername());
-
-        // 3. Notify
         socialService.sendInvite(user.getUsername(), opponent, game.getId());
 
         return ResponseEntity.ok(game.getId());
